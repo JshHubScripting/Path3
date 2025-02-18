@@ -1,131 +1,146 @@
-local GuiService = game:GetService("GuiService")
-local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-
 local NotificationHolder = loadstring(game:HttpGet("https://raw.githubusercontent.com/BocusLuke/UI/main/STX/Module.Lua"))()
 local Notification = loadstring(game:HttpGet("https://raw.githubusercontent.com/BocusLuke/UI/main/STX/Client.Lua"))()
 
-Notification:Notify(
-    {Title = "Gotham.Wtf", Description = "Thanks for Executing. Made for you by the JshTeam Devs."},
-    {OutlineColor = Color3.fromRGB(80, 80, 80), Time = 5, Type = "option"},
-    {Image = "http://www.roblox.com/asset/?id=6023426923", ImageColor = Color3.fromRGB(255, 84, 84), Callback = function(State) print(tostring(State)) end}
-)
-
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Parent = game.Players.LocalPlayer.PlayerGui
-
 local Button = Instance.new("TextButton")
-Button.Size = UDim2.new(0, 200, 0, 50)
-Button.Position = UDim2.new(0.5, -100, 0.5, -25)
-Button.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-Button.Text = "Gotham.Wtf"
-Button.TextSize = 20
-Button.TextColor3 = Color3.fromRGB(255, 255, 255)
-Button.Font = Enum.Font.Gotham
-Button.TextStrokeTransparency = 0.8
-Button.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-Button.TextScaled = true
-Button.TextWrapped = true
+local UICorner = Instance.new("UICorner")
+
+ScreenGui.Parent = game:GetService("CoreGui")
 Button.Parent = ScreenGui
+Button.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+Button.Position = UDim2.new(0, 10, 0, 10)
+Button.Size = UDim2.new(0, 150, 0, 50)
+Button.Font = Enum.Font.SourceSansBold
+Button.Text = "Trident.WTF"
+Button.TextScaled = true
+Button.TextColor3 = Color3.fromRGB(255, 0, 0)
+Button.Draggable = true
+Button.Active = true
+Button.Selectable = true
 
-local function getRainbowColor()
-    local time = tick()
-    local r = math.sin(time * 0.5) * 127 + 128
-    local g = math.sin(time * 0.5 + 2) * 127 + 128
-    local b = math.sin(time * 0.5 + 4) * 127 + 128
-    return Color3.fromRGB(r, g, b)
-end
+UICorner.Parent = Button  -- Apply UI corners to the button
 
-RunService.RenderStepped:Connect(function()
-    Button.TextColor3 = getRainbowColor()
+spawn(function()
+    while true do
+        for i = 0, 1, 0.05 do
+            Button.TextColor3 = Color3.fromHSV(i, 1, 1)
+            wait(0.05)
+        end
+    end
 end)
 
-Button.MouseButton1Click:Connect(function()
-    getgenv().AimPart = "HumanoidRootPart"
-    getgenv().AimlockKey = "q"
-    getgenv().AimRadius = 30
-    getgenv().ThirdPerson = true
-    getgenv().FirstPerson = true
-    getgenv().TeamCheck = false
-    getgenv().PredictMovement = true
-    getgenv().PredictionVelocity = 9
+local currentTarget = nil
+local camera = game.Workspace.CurrentCamera
+local userInputService = game:GetService("UserInputService")
+local mouse = game.Players.LocalPlayer:GetMouse()
 
-    local LocalPlayer = Players.LocalPlayer
-    local Mouse = LocalPlayer:GetMouse()
-    local Camera = workspace.CurrentCamera
-    local LockedTarget = nil
-    local AimLockEnabled = false
-    local TargetHighlight = nil
+local function getClosestPlayer()
+    local players = game:GetService("Players")
+    local localPlayer = players.LocalPlayer
+    local closestPlayer = nil
+    local shortestDistance = math.huge
 
-    local function GetNearestTarget()
-        local closestPlayer = nil
-        local shortestDistance = getgenv().AimRadius
-
-        for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
-                local targetPosition = player.Character.Head.Position
-                local screenPosition, onScreen = Camera:WorldToViewportPoint(targetPosition)
-
-                if onScreen then
-                    local distance = (Vector2.new(Mouse.X, Mouse.Y) - Vector2.new(screenPosition.X, screenPosition.Y)).Magnitude
-
-                    if distance < shortestDistance then
-                        closestPlayer = player
-                        shortestDistance = distance
-                    end
+    for _, player in pairs(players:GetPlayers()) do
+        if player ~= localPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local screenPos, onScreen = camera:WorldToViewportPoint(player.Character.HumanoidRootPart.Position)
+            if onScreen then
+                local distance = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)).magnitude
+                if distance < shortestDistance then
+                    closestPlayer = player
+                    shortestDistance = distance
                 end
             end
         end
-
-        return closestPlayer
     end
+    return closestPlayer
+end
 
-    UserInputService.InputBegan:Connect(function(input)
-        if input.KeyCode == Enum.KeyCode[getgenv().AimlockKey:upper()] then
-            if LockedTarget == nil then
-                LockedTarget = GetNearestTarget()
-                AimLockEnabled = true
-                Notification:Notify(
-                    {Title = "Targeting", Description = "Now Targeting: " .. LockedTarget.Name},
-                    {OutlineColor = Color3.fromRGB(80, 80, 80), Time = 5, Type = "option"},
-                    {Image = "http://www.roblox.com/asset/?id=6023426923", ImageColor = Color3.fromRGB(255, 84, 84)}
-                )
+local function lockCrosshairToTarget(target)
+    if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+        local humanoidRootPart = target.Character.HumanoidRootPart
+        local screenPos, onScreen = camera:WorldToViewportPoint(humanoidRootPart.Position)
+        
+        if onScreen then
+            -- Move the mouse (crosshair) to the target's position
+            mouse.Move:Fire(Vector2.new(screenPos.X, screenPos.Y))
+        end
+    end
+end
 
-                TargetHighlight = Instance.new("Highlight")
-                TargetHighlight.Parent = LockedTarget.Character
-                TargetHighlight.FillColor = Color3.fromRGB(0, 0, 255)
-                TargetHighlight.OutlineColor = Color3.fromRGB(0, 0, 0)
-                TargetHighlight.FillTransparency = 0.5
-            else
-                Notification:Notify(
-                    {Title = "Untargeted", Description = "Untargeted " .. LockedTarget.Name},
-                    {OutlineColor = Color3.fromRGB(80, 80, 80), Time = 5, Type = "option"},
-                    {Image = "http://www.roblox.com/asset/?id=6023426923", ImageColor = Color3.fromRGB(255, 84, 84)}
-                )
-
-                if TargetHighlight then
-                    TargetHighlight:Destroy()
-                end
-
-                LockedTarget = nil
-                AimLockEnabled = false
+local function getBodyPartHit(target)
+    -- Check each body part for a hit
+    for _, part in pairs(target.Character:GetChildren()) do
+        if part:IsA("BasePart") and part.CanCollide then
+            local screenPos, onScreen = camera:WorldToViewportPoint(part.Position)
+            if onScreen then
+                return part.Name
             end
         end
-    end)
+    end
+    return "Unknown Body Part"
+end
 
-    RunService.RenderStepped:Connect(function()
-        if AimLockEnabled and LockedTarget and LockedTarget.Character and LockedTarget.Character:FindFirstChild(getgenv().AimPart) then
-            local targetPart = LockedTarget.Character[getgenv().AimPart]
-            local targetPosition = targetPart.Position + targetPart.Velocity / getgenv().PredictionVelocity
+local function toggleTargeting()
+    if currentTarget then
+        -- Untarget the current target
+        for _, part in pairs(currentTarget.Character:GetChildren()) do
+            if part:IsA("BasePart") then
+                part.OutlineColor3 = Color3.fromRGB(0, 0, 0)
+                part.Color = Color3.fromRGB(255, 255, 255)
+            end
+        end
+        
+        Notification:Notify(
+            {Title = "Trident.WTF", Description = "Untargeted: " .. currentTarget.DisplayName},
+            {OutlineColor = Color3.fromRGB(80, 80, 80), Time = 5, Type = "default"}
+        )
+        
+        currentTarget = nil
+    else
+        local target = getClosestPlayer()
+        if target and target.Character then
+            -- Target a new player
+            currentTarget = target
 
-            Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPosition)
+            for _, part in pairs(target.Character:GetChildren()) do
+                if part:IsA("BasePart") then
+                    part.OutlineColor3 = Color3.fromRGB(0, 0, 0)
+                    part.Color = Color3.fromRGB(0, 0, 255)
+                end
+            end
 
             Notification:Notify(
-                {Title = "Part Hit", Description = "You hit the " .. targetPart.Name .. " of " .. LockedTarget.Name},
-                {OutlineColor = Color3.fromRGB(80, 80, 80), Time = 5, Type = "option"},
-                {Image = "http://www.roblox.com/asset/?id=6023426923", ImageColor = Color3.fromRGB(255, 84, 84)}
+                {Title = "Trident.WTF", Description = "Targeting: " .. target.DisplayName},
+                {OutlineColor = Color3.fromRGB(80, 80, 80), Time = 5, Type = "default"}
             )
         end
-    end)
+    end
+end
+
+-- Button click event
+Button.MouseButton1Click:Connect(function()
+    toggleTargeting()
+end)
+
+-- Key press event for "Q"
+userInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed then
+        if input.KeyCode == Enum.KeyCode.Q then
+            toggleTargeting()
+        end
+    end
+end)
+
+game:GetService("RunService").RenderStepped:Connect(function()
+    if currentTarget then
+        lockCrosshairToTarget(currentTarget)
+        local bodyPart = getBodyPartHit(currentTarget)
+        
+        if bodyPart ~= "Unknown Body Part" then
+            Notification:Notify(
+                {Title = "Trident.WTF", Description = "Hit: " .. bodyPart},
+                {OutlineColor = Color3.fromRGB(80, 80, 80), Time = 5, Type = "default"}
+            )
+        end
+    end
 end)
