@@ -1,0 +1,131 @@
+local GuiService = game:GetService("GuiService")
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local NotificationHolder = loadstring(game:HttpGet("https://raw.githubusercontent.com/BocusLuke/UI/main/STX/Module.Lua"))()
+local Notification = loadstring(game:HttpGet("https://raw.githubusercontent.com/BocusLuke/UI/main/STX/Client.Lua"))()
+
+Notification:Notify(
+    {Title = "Gotham.Wtf", Description = "Thanks for Executing. Made for you by the JshTeam Devs."},
+    {OutlineColor = Color3.fromRGB(80, 80, 80), Time = 5, Type = "option"},
+    {Image = "http://www.roblox.com/asset/?id=6023426923", ImageColor = Color3.fromRGB(255, 84, 84), Callback = function(State) print(tostring(State)) end}
+)
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = game.Players.LocalPlayer.PlayerGui
+
+local Button = Instance.new("TextButton")
+Button.Size = UDim2.new(0, 200, 0, 50)
+Button.Position = UDim2.new(0.5, -100, 0.5, -25)
+Button.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+Button.Text = "Gotham.Wtf"
+Button.TextSize = 20
+Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+Button.Font = Enum.Font.Gotham
+Button.TextStrokeTransparency = 0.8
+Button.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+Button.TextScaled = true
+Button.TextWrapped = true
+Button.Parent = ScreenGui
+
+local function getRainbowColor()
+    local time = tick()
+    local r = math.sin(time * 0.5) * 127 + 128
+    local g = math.sin(time * 0.5 + 2) * 127 + 128
+    local b = math.sin(time * 0.5 + 4) * 127 + 128
+    return Color3.fromRGB(r, g, b)
+end
+
+RunService.RenderStepped:Connect(function()
+    Button.TextColor3 = getRainbowColor()
+end)
+
+Button.MouseButton1Click:Connect(function()
+    getgenv().AimPart = "HumanoidRootPart"
+    getgenv().AimlockKey = "q"
+    getgenv().AimRadius = 30
+    getgenv().ThirdPerson = true
+    getgenv().FirstPerson = true
+    getgenv().TeamCheck = false
+    getgenv().PredictMovement = true
+    getgenv().PredictionVelocity = 9
+
+    local LocalPlayer = Players.LocalPlayer
+    local Mouse = LocalPlayer:GetMouse()
+    local Camera = workspace.CurrentCamera
+    local LockedTarget = nil
+    local AimLockEnabled = false
+    local TargetHighlight = nil
+
+    local function GetNearestTarget()
+        local closestPlayer = nil
+        local shortestDistance = getgenv().AimRadius
+
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+                local targetPosition = player.Character.Head.Position
+                local screenPosition, onScreen = Camera:WorldToViewportPoint(targetPosition)
+
+                if onScreen then
+                    local distance = (Vector2.new(Mouse.X, Mouse.Y) - Vector2.new(screenPosition.X, screenPosition.Y)).Magnitude
+
+                    if distance < shortestDistance then
+                        closestPlayer = player
+                        shortestDistance = distance
+                    end
+                end
+            end
+        end
+
+        return closestPlayer
+    end
+
+    UserInputService.InputBegan:Connect(function(input)
+        if input.KeyCode == Enum.KeyCode[getgenv().AimlockKey:upper()] then
+            if LockedTarget == nil then
+                LockedTarget = GetNearestTarget()
+                AimLockEnabled = true
+                Notification:Notify(
+                    {Title = "Targeting", Description = "Now Targeting: " .. LockedTarget.Name},
+                    {OutlineColor = Color3.fromRGB(80, 80, 80), Time = 5, Type = "option"},
+                    {Image = "http://www.roblox.com/asset/?id=6023426923", ImageColor = Color3.fromRGB(255, 84, 84)}
+                )
+
+                TargetHighlight = Instance.new("Highlight")
+                TargetHighlight.Parent = LockedTarget.Character
+                TargetHighlight.FillColor = Color3.fromRGB(0, 0, 255)
+                TargetHighlight.OutlineColor = Color3.fromRGB(0, 0, 0)
+                TargetHighlight.FillTransparency = 0.5
+            else
+                Notification:Notify(
+                    {Title = "Untargeted", Description = "Untargeted " .. LockedTarget.Name},
+                    {OutlineColor = Color3.fromRGB(80, 80, 80), Time = 5, Type = "option"},
+                    {Image = "http://www.roblox.com/asset/?id=6023426923", ImageColor = Color3.fromRGB(255, 84, 84)}
+                )
+
+                if TargetHighlight then
+                    TargetHighlight:Destroy()
+                end
+
+                LockedTarget = nil
+                AimLockEnabled = false
+            end
+        end
+    end)
+
+    RunService.RenderStepped:Connect(function()
+        if AimLockEnabled and LockedTarget and LockedTarget.Character and LockedTarget.Character:FindFirstChild(getgenv().AimPart) then
+            local targetPart = LockedTarget.Character[getgenv().AimPart]
+            local targetPosition = targetPart.Position + targetPart.Velocity / getgenv().PredictionVelocity
+
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPosition)
+
+            Notification:Notify(
+                {Title = "Part Hit", Description = "You hit the " .. targetPart.Name .. " of " .. LockedTarget.Name},
+                {OutlineColor = Color3.fromRGB(80, 80, 80), Time = 5, Type = "option"},
+                {Image = "http://www.roblox.com/asset/?id=6023426923", ImageColor = Color3.fromRGB(255, 84, 84)}
+            )
+        end
+    end)
+end)
